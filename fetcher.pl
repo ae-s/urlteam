@@ -3,21 +3,28 @@
 use warnings;
 use strict;
 
+use threads;
+use Thread::Semaphore;
+
 require LWP::UserAgent;
 
 my @elems = ("0" .. "9", "A" .. "Z", "a" .. "z");
-my $host = 'link.0daymeme.com';
+my $host = 'is.gd';
 
 my $len = 1;
-my @num = ( 0 );
+my @num = qw/0 0 0 3 0/;
+my $inuse = 0;
+
+my $maxthreads = 20;
+my $semaphore = Thread::Semaphore->new($maxthreads);
 
 #my @numthreads = 1;
 
 sub convert (@) {
     my $out = "";
 
-    for my $p (@_) {
-	$out .= $elems[$p];
+    for (@_) {
+	$out .= $elems[$_];
     }
 
     return $out;
@@ -30,19 +37,55 @@ sub fetch ($) {
 
     print "Fetching from $url\n";
 
+    $ua->max_redirect( 0 );
+
     my $resp = $ua->head($url);
-#    if ($resp->is_redirect()) {
-	print "RE  ";
+    if ($resp->is_redirect) {
 	my $loc = $resp->header('Location');
-	print $loc ;
-	print "\n";
-#    } else {
-#	print "NO\n";
-#    }
+	return $loc;
+    } else {
+	return '';
+    }
 }
 
-print fetch('http://tinyurl.com/kx9y'), "\n";
+sub increment () {
+    for (reverse @num) {
+	$_++;
+	if ($_ == scalar @elems) {
+	    $_ = 0;
+	    next;
+	}
+	last;
+    }
+}
 
-print convert( @num ), "\n";
+sub go ($$@) {
+    my ($name, $host, @num) = @_;
 
+    open my $fh, '+>', $name;
 
+    my $url = 'http://' . $host . '/' . convert(@num);
+    my $dest = fetch $url;
+    print convert(@num), ' -> ', $dest, "\n";
+    print $fh convert(@num), "|", $dest, "\n";
+
+    close $fh;
+
+    $semaphore->up();
+}
+
+sub boot () {
+    my $out = "$host/" . convert(@num);
+    threads->detach();
+    go($out, $host, @num);
+}
+
+mkdir $host;
+
+while (1) {
+    increment;
+    my $out = "$host/" . convert(@num);
+#    my $out = "$host.txt";
+    $semaphore->down();
+    threads->create(\&boot);
+}
