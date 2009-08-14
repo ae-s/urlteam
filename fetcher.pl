@@ -13,8 +13,6 @@ my @num = ( 0 );
 
 #my @numthreads = 1;
 
-my $ua = LWP::UserAgent->new;
-
 sub convert (@) {
     my $out = "";
 
@@ -26,9 +24,24 @@ sub convert (@) {
 }
 
 sub fetch ($) {
+    my $url = shift;
     my $out = "";
+    my $ua = LWP::UserAgent->new;
 
-    
+    print "Fetching from $url\n";
+
+    my $resp = $ua->head($url);
+#    if ($resp->is_redirect()) {
+	print "RE  ";
+	my $loc = $resp->header('Location');
+	print $loc ;
+	print "\n";
+#    } else {
+#	print "NO\n";
+#    }
+}
+
+print fetch('http://tinyurl.com/kx9y'), "\n";
 
 print convert( @num ), "\n";
 
