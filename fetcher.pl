@@ -4,19 +4,21 @@ use warnings;
 use strict;
 
 use threads;
-use Thread::Semaphore;
+use Thread::Queue;
 
 require LWP::UserAgent;
 
 my @elems = ("0" .. "9", "A" .. "Z", "a" .. "z");
 my $host = 'is.gd';
 
+#my $fh :shared;
+
 my $len = 1;
-my @num = qw/0 0 0 3 0/;
+my @num = qw/0 0 0 0 0/;
 my $inuse = 0;
 
 my $maxthreads = 20;
-my $semaphore = Thread::Semaphore->new($maxthreads);
+my $stream = Thread::Queue->new();
 
 #my @numthreads = 1;
 
@@ -30,12 +32,9 @@ sub convert (@) {
     return $out;
 }
 
-sub fetch ($) {
-    my $url = shift;
+sub fetch ($$) {
+    my ($url, $ua) = @_;
     my $out = "";
-    my $ua = LWP::UserAgent->new;
-
-    print "Fetching from $url\n";
 
     $ua->max_redirect( 0 );
 
@@ -59,33 +58,49 @@ sub increment () {
     }
 }
 
-sub go ($$@) {
-    my ($name, $host, @num) = @_;
+sub go ($$$@) {
+    my ($ua, $out, $host, @num) = @_;
 
-    open my $fh, '+>', $name;
+    open my $fh, '>>', $host . "/" . convert(@num);
+#    open my $fh, '+>', $host . ".txt";
+
 
     my $url = 'http://' . $host . '/' . convert(@num);
-    my $dest = fetch $url;
+    my $dest = fetch $url, $ua;
     print convert(@num), ' -> ', $dest, "\n";
     print $fh convert(@num), "|", $dest, "\n";
 
     close $fh;
-
-    $semaphore->up();
 }
 
 sub boot () {
-    my $out = "$host/" . convert(@num);
-    threads->detach();
-    go($out, $host, @num);
+    my $ua = LWP::UserAgent->new();
+
+    while (1) {
+	my ($host, @num) = @{$stream->dequeue()};
+	my $out = "$host/" . convert(@num);
+	go($ua, $out, $host, @num);
+    }
 }
 
 mkdir $host;
 
-while (1) {
-    increment;
-    my $out = "$host/" . convert(@num);
-#    my $out = "$host.txt";
-    $semaphore->down();
+
+
+while ($maxthreads > 0) {
     threads->create(\&boot);
+    $maxthreads--;
 }
+
+while (1) {
+    if ($stream->pending < 10) {
+	increment;
+
+	my @ary :shared = ($host, @num);
+	$stream->enqueue(\@ary);
+    } else {
+	sleep 0.1;
+    }
+}
+
+
