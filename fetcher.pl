@@ -12,17 +12,23 @@ use Thread::Queue;
 
 require LWP::UserAgent;
 
+# Host to scrape.
+my $host = shift @ARGV;
+
 # Modify this if e.g. the host is all-numeric or case-insensitive.
 # Interestingly, if you are scraping a site like shorl.com, who uses
 # syllables instead of characters, you can have this be a list of
 # those syllables.
 my @elems = ("0" .. "9", "A" .. "Z", "a" .. "z");
+if ($ARGV != 0) {
+    @elems = @ARGV;
+}
 
-# Host to scrape.
-my $host = $ARGV[0];
+
+print "Fetching from $host with characters ".join(",", @elems)."\n";
 
 # Starting point
-my @num = qw/0 0 0/;
+my @num = qw/0 6 34 0 0/;
 
 my $maxthreads = 30;
 my $maxmsgs = $maxthreads * 10;
