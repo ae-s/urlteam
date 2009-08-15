@@ -19,10 +19,10 @@ require LWP::UserAgent;
 my @elems = ("0" .. "9", "A" .. "Z", "a" .. "z");
 
 # Host to scrape.
-my $host = 'is.gd';
+my $host = $ARGV[0];
 
 # Starting point
-my @num = qw/0 0 42 0 0/;
+my @num = qw/0 0 0/;
 
 my $maxthreads = 30;
 my $maxmsgs = $maxthreads * 10;
@@ -49,7 +49,7 @@ sub fetch ($$) {
 
     $ua->max_redirect( 0 );
 
-    my $resp = $ua->head($url);
+    my $resp = $ua->get($url);
     if ($resp->is_redirect) {
 	my $loc = $resp->header('Location');
 	return $loc;
@@ -92,10 +92,13 @@ sub boot () {
 # This is a worker thread to write fetched URLs.  There is only one of these.
 sub writer () {
     open my $fh, '>>', $host . ".txt";
+    print "Opened $host.txt\n";
+
+
     while (1) {
 	my $line = $writer->dequeue();
 #	print $writer->pending , " / " , $line;
-	print "R: " .  $stream->pending . "  W: " . $writer->pending . "  URL: " . substr(substr($line, 0, 75), 0, -1) . "\n";
+	print "R: " .  $stream->pending . "  W: " . $writer->pending . "  URL: " . $host . "/" . substr(substr($line, 0, 70), 0, -1) . "\n";
 	print $fh $line;
     }
 }
