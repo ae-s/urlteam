@@ -24,11 +24,15 @@ if ($ARGV != 0) {
     @elems = @ARGV;
 }
 
-
 print "Fetching from $host with characters ".join(",", @elems)."\n";
 
+#abcdefghijklmnopqrstuvwxyz
+
 # Starting point
-my @num = qw/0 6 34 0 0/;
+my @num = qw/1 6 36 0 0/;
+
+# Stopping point
+my @last = qw/2 51 0 0 0/;
 
 my $maxthreads = 30;
 my $maxmsgs = $maxthreads * 10;
@@ -86,7 +90,7 @@ sub go ($$$@) {
 
 # This is a worker thread to fetch URLs.  There are $maxthreads of these
 sub boot () {
-    my $ua = LWP::UserAgent->new();
+    my $ua = LWP::UserAgent->new(agent => "Eat Delicious Poop");
 
     while (1) {
 	my ($host, @num) = @{$stream->dequeue()};
@@ -103,14 +107,16 @@ sub writer () {
 
     while (1) {
 	my $line = $writer->dequeue();
-#	print $writer->pending , " / " , $line;
+	if (!defined $line) {
+	    threads->exit();
+	}
 	print "R: " .  $stream->pending . "  W: " . $writer->pending . "  URL: " . $host . "/" . substr(substr($line, 0, 70), 0, -1) . "\n";
 	print $fh $line;
     }
 }
 
 # Create the thread to write to the file
-threads->create(\&writer);
+my $writerthread = threads->create(\&writer);
 
 # Create the worker threads
 while ($maxthreads > 0) {
@@ -125,9 +131,20 @@ while (1) {
 
 	my @ary :shared = ($host, @num);
 	$stream->enqueue(\@ary);
+	if (@num ~~ @last) {
+	    last;
+	}
     } else {
 	sleep 1;
     }
 }
 
+while ($stream->pending > 0) {
+    sleep 1;
+}
 
+$writer->enqueue(undef);
+
+$writerthread->join();
+
+exit;
