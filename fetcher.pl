@@ -19,7 +19,7 @@ my $host = shift @ARGV;
 # Interestingly, if you are scraping a site like shorl.com, who uses
 # syllables instead of characters, you can have this be a list of
 # those syllables.
-my @elems = ("0" .. "9", "A" .. "Z", "a" .. "z");
+my @elems = ("0" .. "9", "a" .. "z", "A" .. "Z");
 if ($ARGV != 0) {
     @elems = @ARGV;
 }
@@ -29,10 +29,11 @@ print "Fetching from $host with characters ".join(",", @elems)."\n";
 #abcdefghijklmnopqrstuvwxyz
 
 # Starting point
-my @num = qw/1 6 36 0 0/;
+my @num = qw/2 36 10 21 33/;
 
 # Stopping point
-my @last = qw/2 51 0 0 0/;
+# 2 A 9 L X
+my @last = qw/2 37 0 0 0/;
 
 my $maxthreads = 30;
 my $maxmsgs = $maxthreads * 10;

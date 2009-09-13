@@ -9,7 +9,8 @@ use strict;
 
 my @elems = ("0" .. "9", "A" .. "Z", "a" .. "z");
 
-my @num = qw/0 0 0 0 0/;
+#abcdefghijklmnopqrstuvwxyz
+my @num = qw/0 6 34 0 1/;
 
 my %queue = ( );
 
@@ -42,7 +43,7 @@ sub add($) {
     my $line = shift;
     $line =~ m/^([a-zA-Z0-9]+)\|(.*)$/;
     $queue{$1} = $2;
-#    print "Added $1 for total of " . (keys %queue) . "\n";
+    print "Added $1 for total of " . (keys %queue) . "\n";
 }
 
 READ: while (<$in>) {
@@ -50,10 +51,10 @@ READ: while (<$in>) {
   WRITE: while (defined $queue{convert(@num)}) {
 	print $out convert(@num) . "|" . $queue{convert(@num)} . "\n";
 	delete $queue{convert(@num)};
-#	print "Wrote " . convert(@num) . "\n";
+	print "Wrote " . convert(@num) . "\n";
 	increment;
     }
-    if (keys %queue > 1000) {
+    if (keys %queue > 10000) {
 	print "Skipped " . convert(@num) . "!\n";
 	print $error convert(@num) . "\n";
 	increment;
