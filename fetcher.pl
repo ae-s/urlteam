@@ -2,7 +2,11 @@
 
 # URL Shortener Scraper
 # Copyright 2009 Duncan Smith
-# BSD license
+# Licensed to all comers under the BSD license.
+# ALL WARRANTY DISCLAIMED.
+#
+# If you can launch nuclear bombs with this, I'll be impressed.  But
+# it will still be your fault.
 
 use warnings;
 use strict;
