@@ -24,20 +24,26 @@ my $host = shift @ARGV;
 # syllables instead of characters, you can have this be a list of
 # those syllables.
 my @elems = ("0" .. "9", "a" .. "z", "A" .. "Z");
+#0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+my $start = shift @ARGV;
+my $end = shift @ARGV;
+
+# For the oddball shorteners, allow specifying the digit set after the
+# start and end.  Permits shorteners without single-char names, such
+# as the occasional "pronounceable" type.
 if ($ARGV != 0) {
     @elems = @ARGV;
 }
 
 print "Fetching from $host with characters ".join(",", @elems)."\n";
 
-#abcdefghijklmnopqrstuvwxyz
 
 # Starting point
-my @num = qw/2 36 10 21 33/;
+my @num = deconvert($start);
 
 # Stopping point
-# 2 A 9 L X
-my @last = qw/2 37 0 0 0/;
+my @last = deconvert($end);
 
 my $maxthreads = 30;
 my $maxmsgs = $maxthreads * 10;
@@ -56,6 +62,18 @@ sub convert (@) {
     }
 
     return $out;
+}
+
+sub deconvert ($) {
+    my @in = split(shift, '');
+    my @out = ();
+
+    while ($#in > 0) {
+	my $char = shift(@in);
+	push(@out, index($char, join('', @elems)));
+    }
+
+    return @out;
 }
 
 sub fetch ($$) {
