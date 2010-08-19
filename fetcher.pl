@@ -69,8 +69,10 @@ sub deconvert ($) {
 
     while ($#in >= 0) {
 	my $char = shift(@in);
-	push(@out, index($char, join('', @elems)));
+	push(@out, index(join('', @elems), $char));
     }
+
+    print join(",", @out);
 
     return @out;
 }
@@ -115,7 +117,12 @@ sub boot () {
     my $ua = LWP::UserAgent->new(agent => "Eat Delicious Poop");
 
     while (1) {
-	my ($host, @num) = @{$stream->dequeue()};
+	my $in = $stream->dequeue();
+	if (!defined $in) {
+	    print "Thread ", threads->tid(), " exiting\n";
+	    threads->exit();
+	}
+	my ($host, @num) = @{$in};
 	my $out = "$host/" . convert(@num);
 	go($ua, $out, $host, @num);
     }
@@ -140,9 +147,12 @@ sub writer () {
 # Create the thread to write to the file
 my $writerthread = threads->create(\&writer);
 
+my @scraperthreads = ();
+
 # Create the worker threads
 while ($maxthreads > 0) {
-    threads->create(\&boot);
+    print "Splitting off a thread ...\n";
+    push(@scraperthreads, threads->create(\&boot));
     $maxthreads--;
 }
 
@@ -166,6 +176,12 @@ while ($stream->pending > 0) {
 }
 
 $writer->enqueue(undef);
+
+while ($#scraperthreads > 0) {
+    print "Joining thread ...\n";
+    $stream->enqueue(undef);
+    pop(@scraperthreads)->join();
+}
 
 $writerthread->join();
 
