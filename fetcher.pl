@@ -31,13 +31,12 @@ my $end = shift @ARGV;
 
 # For the oddball shorteners, allow specifying the digit set after the
 # start and end.  Permits shorteners without single-char names, such
-# as the occasional "pronounceable" type.
-if ($ARGV != 0) {
+# as shorl.com.
+if ($#ARGV > 1) {
     @elems = @ARGV;
 }
 
 print "Fetching from $host with characters ".join(",", @elems)."\n";
-
 
 # Starting point
 my @num = deconvert($start);
@@ -65,10 +64,10 @@ sub convert (@) {
 }
 
 sub deconvert ($) {
-    my @in = split(shift, '');
+    my @in = split('', shift);
     my @out = ();
 
-    while ($#in > 0) {
+    while ($#in >= 0) {
 	my $char = shift(@in);
 	push(@out, index($char, join('', @elems)));
     }
