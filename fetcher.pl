@@ -87,6 +87,8 @@ sub fetch ($$) {
     if ($resp->is_redirect) {
 	my $loc = $resp->header('Location');
 	return $loc;
+    } elsif ($resp->is_error) {
+	return undef;
     } else {
 	return '';
     }
@@ -108,13 +110,22 @@ sub go ($$$@) {
 
     my $url = 'http://' . $host . '/' . convert(@num);
     my $dest = fetch $url, $ua;
+
+    if (!defined $dest) {
+	# Something went wrong, throw it back for another try.
+	print "== Something went wrong with ".convert(@num).", bailing\n";
+	return undef;
+    }
     $writer->enqueue(convert(@num) . "|" . $dest . "\n");
 
+    return 1;
 }
 
 # This is a worker thread to fetch URLs.  There are $maxthreads of these
 sub boot () {
     my $ua = LWP::UserAgent->new(agent => "Eat Delicious Poop");
+
+    $ua->timeout(10);
 
     while (1) {
 	my $in = $stream->dequeue();
@@ -124,7 +135,14 @@ sub boot () {
 	}
 	my ($host, @num) = @{$in};
 	my $out = "$host/" . convert(@num);
-	go($ua, $out, $host, @num);
+
+	while (!defined go($ua, $out, $host, @num)) {
+	    # Timeout, try it again.
+	    1;
+#	    print "== Throwing back " . convert(@num) . "\n";
+#	    my @ray = ($host, @num);
+#	    $stream->enqueue(\@ray);
+	}
     }
 }
 
