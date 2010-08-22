@@ -195,9 +195,13 @@ while ($stream->pending > 0) {
 
 $writer->enqueue(undef);
 
+for (@scraperthreads) {
+    $stream->enqueue(undef);
+}
+$stream->enqueue(undef);
+
 while ($#scraperthreads > 0) {
     print "Joining thread ...\n";
-    $stream->enqueue(undef);
     pop(@scraperthreads)->join();
 }
 
