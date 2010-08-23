@@ -8,6 +8,11 @@
 # If you can launch nuclear bombs with this, I'll be impressed.  But
 # it will still be your fault.
 
+# Use:
+# fetcher.pl <shortener> <start> <end> [character set]
+# fetcher.pl is.gd 5u000 5t000
+# fetcher.pl xs.md AAA ZZZ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
+
 use warnings;
 use strict;
 
@@ -22,7 +27,7 @@ my $host = shift @ARGV;
 # Modify this if e.g. the host is all-numeric or case-insensitive.
 # Interestingly, if you are scraping a site like shorl.com, who uses
 # syllables instead of characters, you can have this be a list of
-# those syllables.
+# those syllables.  That won't work with start/end points though.
 my @elems = ("0" .. "9", "a" .. "z", "A" .. "Z");
 #0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 
