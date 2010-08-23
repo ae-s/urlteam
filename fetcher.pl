@@ -141,12 +141,14 @@ sub boot () {
 	my ($host, @num) = @{$in};
 	my $out = "$host/" . convert(@num);
 
+	my $count = 0;
+
 	while (!defined go($ua, $out, $host, @num)) {
 	    # Timeout, try it again.
-	    1;
-#	    print "== Throwing back " . convert(@num) . "\n";
-#	    my @ray = ($host, @num);
-#	    $stream->enqueue(\@ray);
+	    if ($count++ > 20) {
+		print "Giving up permanently on " . convert(@num) . "!\n";
+		last;
+	    }
 	}
     }
 }
