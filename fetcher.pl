@@ -8,6 +8,11 @@
 # If you can launch nuclear bombs with this, I'll be impressed.  But
 # it will still be your fault.
 
+# Use:
+# fetcher.pl <shortener> <start> <end> [character set]
+# fetcher.pl is.gd 5u000 5t000
+# fetcher.pl xs.md AAA ZZZ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
+
 use warnings;
 use strict;
 
@@ -22,22 +27,27 @@ my $host = shift @ARGV;
 # Modify this if e.g. the host is all-numeric or case-insensitive.
 # Interestingly, if you are scraping a site like shorl.com, who uses
 # syllables instead of characters, you can have this be a list of
-# those syllables.
+# those syllables.  That won't work with start/end points though.
 my @elems = ("0" .. "9", "a" .. "z", "A" .. "Z");
-if ($ARGV != 0) {
+#0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+my $start = shift @ARGV;
+my $end = shift @ARGV;
+
+# For the oddball shorteners, allow specifying the digit set after the
+# start and end.  Permits shorteners without single-char names, such
+# as shorl.com.
+if ($#ARGV > 1) {
     @elems = @ARGV;
 }
 
 print "Fetching from $host with characters ".join(",", @elems)."\n";
 
-#abcdefghijklmnopqrstuvwxyz
-
 # Starting point
-my @num = qw/2 36 10 21 33/;
+my @num = deconvert($start);
 
 # Stopping point
-# 2 A 9 L X
-my @last = qw/2 37 0 0 0/;
+my @last = deconvert($end);
 
 my $maxthreads = 30;
 my $maxmsgs = $maxthreads * 10;
@@ -58,6 +68,20 @@ sub convert (@) {
     return $out;
 }
 
+sub deconvert ($) {
+    my @in = split('', shift);
+    my @out = ();
+
+    while ($#in >= 0) {
+	my $char = shift(@in);
+	push(@out, index(join('', @elems), $char));
+    }
+
+    print join(",", @out);
+
+    return @out;
+}
+
 sub fetch ($$) {
     my ($url, $ua) = @_;
     my $out = "";
@@ -68,6 +92,8 @@ sub fetch ($$) {
     if ($resp->is_redirect) {
 	my $loc = $resp->header('Location');
 	return $loc;
+    } elsif ($resp->is_error) {
+	return undef;
     } else {
 	return '';
     }
@@ -89,8 +115,15 @@ sub go ($$$@) {
 
     my $url = 'http://' . $host . '/' . convert(@num);
     my $dest = fetch $url, $ua;
+
+    if (!defined $dest) {
+	# Something went wrong, throw it back for another try.
+	print "== Something went wrong with ".convert(@num).", bailing\n";
+	return undef;
+    }
     $writer->enqueue(convert(@num) . "|" . $dest . "\n");
 
+    return 1;
 }
 
 # This is a worker thread to fetch URLs.  There are $maxthreads of these
@@ -99,10 +132,26 @@ sub boot () {
 				 keep_alive => 5,
 	);
 
+    $ua->timeout(10);
+
     while (1) {
-	my ($host, @num) = @{$stream->dequeue()};
+	my $in = $stream->dequeue();
+	if (!defined $in) {
+	    print "Thread ", threads->tid(), " exiting\n";
+	    threads->exit();
+	}
+	my ($host, @num) = @{$in};
 	my $out = "$host/" . convert(@num);
-	go($ua, $out, $host, @num);
+
+	my $count = 0;
+
+	while (!defined go($ua, $out, $host, @num)) {
+	    # Timeout, try it again.
+	    if ($count++ > 20) {
+		print "Giving up permanently on " . convert(@num) . "!\n";
+		last;
+	    }
+	}
     }
 }
 
@@ -125,9 +174,12 @@ sub writer () {
 # Create the thread to write to the file
 my $writerthread = threads->create(\&writer);
 
+my @scraperthreads = ();
+
 # Create the worker threads
 while ($maxthreads > 0) {
-    threads->create(\&boot);
+    print "Splitting off a thread ...\n";
+    push(@scraperthreads, threads->create(\&boot));
     $maxthreads--;
 }
 
@@ -151,6 +203,16 @@ while ($stream->pending > 0) {
 }
 
 $writer->enqueue(undef);
+
+for (@scraperthreads) {
+    $stream->enqueue(undef);
+}
+$stream->enqueue(undef);
+
+while ($#scraperthreads > 0) {
+    print "Joining thread ...\n";
+    pop(@scraperthreads)->join();
+}
 
 $writerthread->join();
 
