@@ -95,7 +95,9 @@ sub go ($$$@) {
 
 # This is a worker thread to fetch URLs.  There are $maxthreads of these
 sub boot () {
-    my $ua = LWP::UserAgent->new(agent => "Eat Delicious Poop");
+    my $ua = LWP::UserAgent->new(agent => "Eat Delicious Poop",
+				 keep_alive => 5,
+	);
 
     while (1) {
 	my ($host, @num) = @{$stream->dequeue()};
